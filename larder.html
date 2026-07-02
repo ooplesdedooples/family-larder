@@ -138,6 +138,8 @@
   .thumb.frozen{background:#E1F0F5;}
   .thumb.bakery{background:#F6EAD8;}
   .thumb.pantry{background:#F0E9D8;}
+  .thumb.drinks{background:#DCEFF2;}
+  .thumb.candy{background:#F9E0EC;}
   .thumb.household{background:#E9E6F2;}
   .thumb.other{background:#EFEFEA;}
 
@@ -300,6 +302,10 @@
     min-width:34px; text-align:center;
   }
   .unit{font-size:11.5px; color:#8a8d80;}
+  .qty-clear{
+    font-family:'Inter',sans-serif; font-size:10.5px; font-style:italic;
+    color:#9a9d90; margin:-6px 0 8px;
+  }
   .tag-row{display:flex; justify-content:space-between; align-items:center;}
   .added-by{
     font-size:10.5px; color:#9a9d90;
@@ -346,6 +352,16 @@
     font-size:12px; letter-spacing:.05em; text-transform:uppercase; cursor:pointer;
   }
 
+  .legal-note{
+    margin-top:40px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+    font-size:10.5px;
+    line-height:1.6;
+    color:#a8ab9d;
+    text-align:center;
+  }
+
   @media (prefers-reduced-motion: reduce){
     .jar{animation:none;}
     .gauge-fill{transition:none;}
@@ -353,7 +369,18 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="modal-bg" id="pin-gate">
+  <div class="modal">
+    <h2>🔒 Family only</h2>
+    <p>Enter the family PIN to open the larder.</p>
+    <input id="pin-input" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" />
+    <p id="pin-error" style="display:none; color:var(--clay); font-size:12.5px; margin:-6px 0 12px;">Wrong PIN — try again.</p>
+    <button id="pin-submit">Unlock</button>
+  </div>
+</div>
+
+<div class="wrap" id="app-wrap" style="display:none;">
   <header>
     <p class="eyebrow">Shared with the family</p>
     <h1>The <em>Larder</em></h1>
@@ -370,7 +397,7 @@
   <div id="view-in">
     <div class="addbar">
       <input id="f-name" type="text" placeholder="Item, e.g. Oat milk" />
-      <input id="f-qty" type="number" min="0" value="1" />
+      <input id="f-qty" type="number" min="0" step="0.5" value="1" title="Decimals ok — 0.5 = half left" />
       <input id="f-unit" type="text" placeholder="unit (optional)" />
       <select id="f-type">
         <option value="produce">🥬 Produce</option>
@@ -379,6 +406,8 @@
         <option value="frozen">🧊 Frozen</option>
         <option value="bakery">🍞 Bakery</option>
         <option value="pantry">🥫 Pantry</option>
+        <option value="drinks">🥤 Drinks</option>
+        <option value="candy">🍬 Candy</option>
         <option value="household">🧴 Household</option>
         <option value="other">🛒 Other</option>
       </select>
@@ -404,6 +433,8 @@
         <option value="frozen">🧊 Frozen</option>
         <option value="bakery">🍞 Bakery</option>
         <option value="pantry">🥫 Pantry</option>
+        <option value="drinks">🥤 Drinks</option>
+        <option value="candy">🍬 Candy</option>
         <option value="household">🧴 Household</option>
         <option value="other">🛒 Other</option>
       </select>
@@ -424,6 +455,10 @@
     <div id="wall-grid"></div>
     <div class="empty" id="wall-empty" style="display:none;">No photos yet. Snap one when you add an item 📷</div>
   </div>
+
+  <footer class="legal-note">
+    Photos uploaded here are for household reference and illustrative purposes only — not for sale, resale, distribution, or any commercial use. Images remain the property of whoever uploaded them and are visible only to people with this link.
+  </footer>
 </div>
 
 <div class="lightbox-bg" id="lightbox-bg">
@@ -449,6 +484,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getDatabase, ref, onValue, push, set, update, remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const FAMILY_PIN = "1313";
+const PIN_OK_KEY = 'larder:pin-ok';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC4-hiDfEf6PuiKjnHarawEw-A84GsX-dw",
@@ -461,6 +502,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 const itemsRef = ref(db, 'items');
 const requestsRef = ref(db, 'requests');
 const NAME_KEY = 'larder:myname';
@@ -519,6 +561,24 @@ function resetPhotoInput(inputId, labelId, previewId){
   document.getElementById(previewId).innerHTML = '📷 photo';
 }
 
+function roundQty(n){
+  return Math.round(n * 100) / 100;
+}
+function formatQty(qty){
+  const whole = Math.floor(qty);
+  const frac = roundQty(qty - whole);
+  if (frac === 0) return String(whole);
+  if (frac === 0.5) return whole > 0 ? `${whole}½` : '½';
+  return String(qty);
+}
+function qtyClearNote(qty){
+  const whole = Math.floor(qty);
+  const frac = roundQty(qty - whole);
+  if (frac === 0) return '';
+  if (frac === 0.5) return whole > 0 ? `${whole} and a half left` : 'half left';
+  return `${qty} left`;
+}
+
 function fmtHeight(qty){
   const pct = Math.max(6, Math.min(100, (qty / 8) * 100));
   return pct + '%';
@@ -529,7 +589,7 @@ function statusOf(qty){
   return {cls:'full', label:'Stocked', color:'var(--sage)'};
 }
 
-const TYPE_EMOJI = {produce:'🥬', dairy:'🥛', meat:'🍗', frozen:'🧊', bakery:'🍞', pantry:'🥫', household:'🧴', other:'🛒'};
+const TYPE_EMOJI = {produce:'🥬', dairy:'🥛', meat:'🍗', frozen:'🧊', bakery:'🍞', pantry:'🥫', drinks:'🥤', candy:'🍬', household:'🧴', other:'🛒'};
 function thumbHtml(type, image, kind, id){
   const t = TYPE_EMOJI[type] ? type : 'other';
   if (image){
@@ -604,10 +664,11 @@ function render(){
           <p class="jar-name">${escapeHtml(item.name)}</p>
           <div class="qty-row">
             <button class="minus" data-id="${item.id}">−</button>
-            <span class="qty-num">${item.qty}</span>
+            <span class="qty-num">${formatQty(item.qty)}</span>
             <button class="plus" data-id="${item.id}">+</button>
             ${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}
           </div>
+          ${qtyClearNote(item.qty) ? `<div class="qty-clear">${qtyClearNote(item.qty)}</div>` : ''}
           <div class="tag-row">
             <span class="added-by">added by ${escapeHtml(item.addedBy || 'someone')}</span>
             <span class="badge ${st.cls}">${st.label}</span>
@@ -616,8 +677,8 @@ function render(){
       </div>`;
   }).join('');
 
-  grid.querySelectorAll('.plus').forEach(b => b.onclick = () => adjustQty(b.dataset.id, 1));
-  grid.querySelectorAll('.minus').forEach(b => b.onclick = () => adjustQty(b.dataset.id, -1));
+  grid.querySelectorAll('.plus').forEach(b => b.onclick = () => adjustQty(b.dataset.id, 0.5));
+  grid.querySelectorAll('.minus').forEach(b => b.onclick = () => adjustQty(b.dataset.id, -0.5));
   grid.querySelectorAll('.del').forEach(b => b.onclick = () => deleteItem(b.dataset.id));
 }
 
@@ -757,7 +818,7 @@ async function addItem(){
   const typeInput = document.getElementById('f-type');
   const name = nameInput.value.trim();
   if (!name) { nameInput.focus(); return; }
-  const qty = Math.max(0, parseInt(qtyInput.value || '1', 10) || 0);
+  const qty = roundQty(Math.max(0, parseFloat(qtyInput.value || '1') || 0));
   const unit = unitInput.value.trim();
   const type = typeInput.value;
   const image = fPendingPhoto;
@@ -781,7 +842,7 @@ async function addItem(){
 async function adjustQty(id, delta){
   const item = items.find(i => i.id === id);
   if (!item) return;
-  const newQty = Math.max(0, item.qty + delta);
+  const newQty = roundQty(Math.max(0, item.qty + delta));
   try{
     await update(ref(db, `items/${id}`), { qty: newQty });
   }catch(e){
@@ -827,7 +888,26 @@ async function saveMyName(){
   hideModal();
 }
 
-async function init(){
+function checkPin(){
+  const input = document.getElementById('pin-input');
+  const error = document.getElementById('pin-error');
+  if (input.value.trim() === FAMILY_PIN){
+    try{ localStorage.setItem(PIN_OK_KEY, 'true'); }catch(e){}
+    unlockApp();
+  } else {
+    error.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function unlockApp(){
+  document.getElementById('pin-gate').style.display = 'none';
+  document.getElementById('app-wrap').style.display = 'block';
+  startApp();
+}
+
+async function startApp(){
   try{
     myName = localStorage.getItem(NAME_KEY) || '';
   }catch(e){
@@ -850,8 +930,27 @@ async function init(){
   wirePhotoInput('f-photo', 'f-photo-label', 'f-photo-preview', v => fPendingPhoto = v);
   wirePhotoInput('r-photo', 'r-photo-label', 'r-photo-preview', v => rPendingPhoto = v);
 
+  try{
+    await signInAnonymously(auth);
+  }catch(e){
+    console.error('Auth failed', e);
+  }
   listenItems();
   listenRequests();
+}
+
+function init(){
+  document.getElementById('pin-submit').onclick = checkPin;
+  document.getElementById('pin-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
+
+  let pinOk = false;
+  try{ pinOk = localStorage.getItem(PIN_OK_KEY) === 'true'; }catch(e){}
+
+  if (pinOk){
+    unlockApp();
+  } else {
+    document.getElementById('pin-input').focus();
+  }
 }
 
 init();
