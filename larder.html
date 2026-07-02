@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Larder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B2E28;
+    --paper:#F3F3EA;
+    --card:#FFFFFF;
+    --sage:#5F7A5A;
+    --sage-dim:#E4EAE1;
+    --mustard:#D3A13B;
+    --mustard-dim:#F6E9CE;
+    --clay:#B85C4A;
+    --clay-dim:#F3DFD9;
+    --line:#DEDBC9;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:840px;margin:0 auto;padding:32px 20px 80px;}
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--sage);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:40px;
+    margin:0 0 6px;
+    letter-spacing:-.01em;
+  }
+  h1 em{font-style:italic;font-weight:500;color:var(--sage);}
+  .sub{margin:0;color:#6b6f63;font-size:14.5px;}
+
+  .namebar{
+    display:flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px;
+    color:#6b6f63; margin-top:14px;
+  }
+  .namebar button{
+    background:none;border:none;text-decoration:underline;
+    color:var(--sage);cursor:pointer;font-family:inherit;font-size:12px;padding:0;
+  }
+
+  .tabs{
+    display:flex; gap:22px; margin-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .tab{
+    background:none; border:none; cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-size:12px;
+    letter-spacing:.08em; text-transform:uppercase;
+    color:#9a9d90; padding:0 0 12px; position:relative;
+  }
+  .tab.active{color:var(--ink);}
+  .tab.active::after{
+    content:''; position:absolute; left:0; right:0; bottom:-1px;
+    height:2px; background:var(--sage); border-radius:2px;
+  }
+  .tab .count{
+    font-size:10px; background:var(--mustard-dim); color:#9c7620;
+    padding:1px 6px; border-radius:8px; margin-left:6px;
+  }
+
+  .req-list{display:flex; flex-direction:column; gap:10px;}
+  .req-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-left:3px solid var(--mustard);
+    border-radius:10px;
+    padding:13px 16px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    animation:rise .25s ease both;
+  }
+  .req-body{flex:1; min-width:0;}
+  .req-name{
+    font-family:'Fraunces',serif; font-weight:600; font-size:16.5px;
+    margin:0 0 3px;
+  }
+  .req-meta{
+    font-size:11.5px; color:#9a9d90;
+  }
+  .req-note{
+    font-size:12.5px; color:#6b6f63; font-style:italic; margin-top:2px;
+  }
+  .req-actions{display:flex; gap:6px; flex-shrink:0;}
+  .got-it{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:.04em; text-transform:uppercase;
+    background:var(--sage); color:#fff; border:none;
+    border-radius:7px; padding:7px 12px; cursor:pointer;
+  }
+  .got-it:hover{opacity:.85;}
+  .req-del{
+    background:none; border:none; color:#c4c6ba; font-size:15px;
+    cursor:pointer; padding:4px 6px;
+  }
+  .req-del:hover{color:var(--clay);}
+
+  .addbar select{
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 8px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .addbar select:focus{outline:2px solid var(--sage); outline-offset:1px;}
+
+  .thumb{
+    width:40px; height:40px; border-radius:10px;
+    flex-shrink:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    font-size:19px;
+  }
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .thumb.produce{background:#E4EFDC;}
+  .thumb.dairy{background:#EAF1F7;}
+  .thumb.meat{background:#F6E0DC;}
+  .thumb.frozen{background:#E1F0F5;}
+  .thumb.bakery{background:#F6EAD8;}
+  .thumb.pantry{background:#F0E9D8;}
+  .thumb.household{background:#E9E6F2;}
+  .thumb.other{background:#EFEFEA;}
+
+  .req-card .thumb{width:44px; height:44px;}
+
+  .photo-btn{
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:#6b6f63;
+    border:1px dashed var(--line); border-radius:8px;
+    padding:0 12px; cursor:pointer; background:var(--paper);
+    min-width:84px; text-align:center;
+  }
+  .photo-btn:hover{border-color:var(--sage); color:var(--sage);}
+  .photo-btn.has-photo{border-style:solid; border-color:var(--sage); color:var(--sage); padding:4px;}
+  .photo-btn.has-photo img{width:32px; height:32px; object-fit:cover; border-radius:6px; display:block;}
+
+  .quilt-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:12px;
+  }
+  .quilt-patch{
+    position:relative;
+    border-radius:12px;
+    overflow:hidden;
+    aspect-ratio:1;
+    cursor:pointer;
+    border:1px solid var(--line);
+    animation:rise .25s ease both;
+  }
+  .quilt-patch img{width:100%; height:100%; object-fit:cover; display:block; transition:transform .2s ease;}
+  .quilt-patch:hover img{transform:scale(1.05);}
+  .quilt-patch-label{
+    position:absolute; left:0; right:0; bottom:0;
+    background:linear-gradient(transparent, rgba(0,0,0,.6));
+    color:#fff; font-family:'IBM Plex Mono',monospace; font-size:10.5px;
+    letter-spacing:.04em; text-transform:uppercase;
+    padding:16px 10px 8px;
+  }
+
+  .lightbox-bg{
+    display:none;
+    position:fixed; inset:0; background:rgba(20,21,17,.82);
+    align-items:center; justify-content:center;
+    z-index:20; padding:24px;
+  }
+  .lightbox-bg.active{display:flex;}
+  .lightbox-inner{max-width:520px; width:100%; text-align:center;}
+  .lightbox-inner img{
+    width:100%; max-height:60vh; object-fit:contain;
+    border-radius:12px; background:#000;
+  }
+  .lightbox-caption{
+    font-family:'Fraunces',serif; font-weight:600; font-size:19px;
+    color:#fff; margin:14px 0 2px;
+  }
+  .lightbox-sub{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:.06em; text-transform:uppercase; color:#c8c9bd; margin:0;
+  }
+  .lightbox-close{
+    position:absolute; top:20px; right:24px;
+    background:none; border:none; color:#fff; font-size:22px; cursor:pointer;
+  }
+
+  .thumb{cursor:pointer;}
+
+  .addbar{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:28px;
+  }
+  .addbar input{
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .addbar input:focus{outline:2px solid var(--sage); outline-offset:1px;}
+  #f-name{flex:2; min-width:140px;}
+  #f-qty{width:64px;}
+  #f-unit{flex:1; min-width:90px;}
+  .addbar button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; letter-spacing:.05em; text-transform:uppercase;
+    background:var(--sage);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:0 18px;
+    cursor:pointer;
+    transition:opacity .15s;
+  }
+  .addbar button:hover{opacity:.85;}
+
+  .stats{
+    display:flex; gap:18px; margin-bottom:18px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:#6b6f63;
+  }
+  .stats b{color:var(--ink);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+    gap:14px;
+  }
+  .jar{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 16px 14px;
+    display:flex;
+    gap:14px;
+    position:relative;
+    animation:rise .25s ease both;
+  }
+  @keyframes rise{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .gauge{
+    width:10px;
+    border-radius:6px;
+    background:var(--line);
+    position:relative;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .gauge-fill{
+    position:absolute;
+    bottom:0; left:0; right:0;
+    border-radius:6px;
+    transition:height .25s ease, background .25s ease;
+  }
+
+  .jar-body{flex:1; min-width:0;}
+  .jar-name{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    margin:0 0 8px;
+    word-break:break-word;
+  }
+  .qty-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .qty-row button{
+    width:26px;height:26px;border-radius:7px;border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); font-size:15px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+  .qty-row button:hover{background:var(--sage-dim);}
+  .qty-num{
+    font-family:'Fraunces',serif; font-weight:600; font-size:22px;
+    min-width:34px; text-align:center;
+  }
+  .unit{font-size:11.5px; color:#8a8d80;}
+  .tag-row{display:flex; justify-content:space-between; align-items:center;}
+  .added-by{
+    font-size:10.5px; color:#9a9d90;
+  }
+  .badge{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px; letter-spacing:.05em; text-transform:uppercase;
+    padding:2px 7px; border-radius:5px;
+  }
+  .badge.full{background:var(--sage-dim); color:var(--sage);}
+  .badge.low{background:var(--mustard-dim); color:#9c7620;}
+  .badge.out{background:var(--clay-dim); color:var(--clay);}
+  .del{
+    position:absolute; top:8px; right:10px;
+    background:none; border:none; color:#c4c6ba; font-size:15px;
+    cursor:pointer; padding:2px 4px; line-height:1;
+  }
+  .del:hover{color:var(--clay);}
+
+  .empty{
+    text-align:center; padding:60px 20px; color:#9a9d90;
+    font-family:'Fraunces',serif; font-style:italic; font-size:18px;
+  }
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(43,46,40,.35);
+    display:flex; align-items:center; justify-content:center; z-index:10;
+    padding:20px;
+  }
+  .modal{
+    background:var(--card); border-radius:16px; padding:26px;
+    max-width:320px; width:100%;
+  }
+  .modal h2{font-family:'Fraunces',serif; font-size:22px; margin:0 0 6px;}
+  .modal p{font-size:13.5px; color:#6b6f63; margin:0 0 16px;}
+  .modal input{
+    width:100%; font-family:'Inter',sans-serif; font-size:15px;
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    background:var(--paper); color:var(--ink); margin-bottom:12px;
+  }
+  .modal button{
+    width:100%; background:var(--sage); color:#fff; border:none;
+    border-radius:8px; padding:11px; font-family:'IBM Plex Mono',monospace;
+    font-size:12px; letter-spacing:.05em; text-transform:uppercase; cursor:pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .jar{animation:none;}
+    .gauge-fill{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Shared with the family</p>
+    <h1>The <em>Larder</em></h1>
+    <p class="sub">Keep stock of what's in the house — everyone can add, everyone can see.</p>
+    <div class="namebar" id="namebar"></div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-in" data-view="in">What's In</button>
+    <button class="tab" id="tab-req" data-view="req">Request an Item</button>
+    <button class="tab" id="tab-wall" data-view="wall">Photo Wall</button>
+  </div>
+
+  <div id="view-in">
+    <div class="addbar">
+      <input id="f-name" type="text" placeholder="Item, e.g. Oat milk" />
+      <input id="f-qty" type="number" min="0" value="1" />
+      <input id="f-unit" type="text" placeholder="unit (optional)" />
+      <select id="f-type">
+        <option value="produce">🥬 Produce</option>
+        <option value="dairy">🥛 Dairy</option>
+        <option value="meat">🍗 Meat</option>
+        <option value="frozen">🧊 Frozen</option>
+        <option value="bakery">🍞 Bakery</option>
+        <option value="pantry">🥫 Pantry</option>
+        <option value="household">🧴 Household</option>
+        <option value="other">🛒 Other</option>
+      </select>
+      <label class="photo-btn" id="f-photo-label">
+        <span id="f-photo-preview">📷 photo</span>
+        <input id="f-photo" type="file" accept="image/*" hidden>
+      </label>
+      <button id="f-add">Add to larder</button>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" style="display:none;">The larder is empty. Add the first item above.</div>
+  </div>
+
+  <div id="view-req" style="display:none;">
+    <div class="addbar">
+      <input id="r-name" type="text" placeholder="Item you need, e.g. Chicken thighs" />
+      <select id="r-type">
+        <option value="produce">🥬 Produce</option>
+        <option value="dairy">🥛 Dairy</option>
+        <option value="meat">🍗 Meat</option>
+        <option value="frozen">🧊 Frozen</option>
+        <option value="bakery">🍞 Bakery</option>
+        <option value="pantry">🥫 Pantry</option>
+        <option value="household">🧴 Household</option>
+        <option value="other">🛒 Other</option>
+      </select>
+      <label class="photo-btn" id="r-photo-label">
+        <span id="r-photo-preview">📷 photo</span>
+        <input id="r-photo" type="file" accept="image/*" hidden>
+      </label>
+      <input id="r-note" type="text" placeholder="note (optional)" style="flex:1.4;" />
+      <button id="r-add">Request it</button>
+    </div>
+
+    <div class="stats" id="req-stats"></div>
+    <div class="req-list" id="req-list"></div>
+    <div class="empty" id="req-empty" style="display:none;">No requests right now — ask and it'll show up here.</div>
+  </div>
+
+  <div id="view-wall" style="display:none;">
+    <div id="wall-grid"></div>
+    <div class="empty" id="wall-empty" style="display:none;">No photos yet. Snap one when you add an item 📷</div>
+  </div>
+</div>
+
+<div class="lightbox-bg" id="lightbox-bg">
+  <button class="lightbox-close" id="lightbox-close">✕</button>
+  <div class="lightbox-inner">
+    <img id="lightbox-img" src="" alt="">
+    <p class="lightbox-caption" id="lightbox-caption"></p>
+    <p class="lightbox-sub" id="lightbox-sub"></p>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg" style="display:none;">
+  <div class="modal">
+    <h2>Who's this?</h2>
+    <p>So the family knows who added what.</p>
+    <input id="modal-name" type="text" placeholder="Your name" />
+    <button id="modal-save">Save</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getDatabase, ref, onValue, push, set, update, remove
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC4-hiDfEf6PuiKjnHarawEw-A84GsX-dw",
+  authDomain: "family-larder.firebaseapp.com",
+  databaseURL: "https://family-larder-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "family-larder",
+  storageBucket: "family-larder.firebasestorage.app",
+  messagingSenderId: "780029414313",
+  appId: "1:780029414313:web:8bf79175117232e0e292b8"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const itemsRef = ref(db, 'items');
+const requestsRef = ref(db, 'requests');
+const NAME_KEY = 'larder:myname';
+let items = [];
+let requests = [];
+let myName = '';
+let fPendingPhoto = '';
+let rPendingPhoto = '';
+
+function compressPhoto(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const maxDim = 480;
+        let { width, height } = img;
+        if (width > height && width > maxDim) { height = height * (maxDim / width); width = maxDim; }
+        else if (height > maxDim) { width = width * (maxDim / height); height = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function wirePhotoInput(inputId, labelId, previewId, setPending){
+  const input = document.getElementById(inputId);
+  const label = document.getElementById(labelId);
+  const preview = document.getElementById(previewId);
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    preview.textContent = 'compressing…';
+    try{
+      const dataUrl = await compressPhoto(file);
+      setPending(dataUrl);
+      label.classList.add('has-photo');
+      preview.innerHTML = `<img src="${dataUrl}" alt="">`;
+    }catch(e){
+      preview.textContent = '📷 photo';
+      label.classList.remove('has-photo');
+    }
+  });
+}
+
+function resetPhotoInput(inputId, labelId, previewId){
+  document.getElementById(inputId).value = '';
+  document.getElementById(labelId).classList.remove('has-photo');
+  document.getElementById(previewId).innerHTML = '📷 photo';
+}
+
+function fmtHeight(qty){
+  const pct = Math.max(6, Math.min(100, (qty / 8) * 100));
+  return pct + '%';
+}
+function statusOf(qty){
+  if (qty <= 0) return {cls:'out', label:'Out', color:'var(--clay)'};
+  if (qty <= 2) return {cls:'low', label:'Low', color:'var(--mustard)'};
+  return {cls:'full', label:'Stocked', color:'var(--sage)'};
+}
+
+const TYPE_EMOJI = {produce:'🥬', dairy:'🥛', meat:'🍗', frozen:'🧊', bakery:'🍞', pantry:'🥫', household:'🧴', other:'🛒'};
+function thumbHtml(type, image, kind, id){
+  const t = TYPE_EMOJI[type] ? type : 'other';
+  if (image){
+    return `<div class="thumb ${t}" onclick="openLightbox('${kind}','${id}')"><img src="${escapeAttr(image)}" alt="" onerror="this.parentElement.innerHTML='${TYPE_EMOJI[t]}'"></div>`;
+  }
+  return `<div class="thumb ${t}">${TYPE_EMOJI[t]}</div>`;
+}
+function escapeAttr(s){
+  return String(s).replace(/"/g, '&quot;');
+}
+
+function openLightbox(kind, id){
+  const source = kind === 'item' ? items : requests;
+  const e = source.find(x => x.id === id);
+  if (!e || !e.image) return;
+  document.getElementById('lightbox-img').src = e.image;
+  document.getElementById('lightbox-caption').textContent = e.name;
+  const person = kind === 'item' ? e.addedBy : e.requestedBy;
+  document.getElementById('lightbox-sub').textContent = (kind === 'item' ? 'in stock' : 'requested') + (person ? ' · ' + person : '');
+  document.getElementById('lightbox-bg').classList.add('active');
+}
+function closeLightbox(){
+  document.getElementById('lightbox-bg').classList.remove('active');
+}
+
+function renderWall(){
+  const grid = document.getElementById('wall-grid');
+  const empty = document.getElementById('wall-empty');
+  const stocked = items.filter(i => i.image).map(i => ({...i, kind: 'item'}));
+  const wanted = requests.filter(r => r.image).map(r => ({...r, kind: 'request'}));
+  const all = [...stocked, ...wanted].sort((a,b) => b.ts - a.ts);
+
+  if (!all.length){
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = '<div class="quilt-grid">' + all.map(e =>
+    `<div class="quilt-patch" onclick="openLightbox('${e.kind}','${e.id}')">
+       <img src="${escapeAttr(e.image)}" alt="${escapeAttr(e.name)}">
+       <div class="quilt-patch-label">${escapeHtml(e.name)}</div>
+     </div>`
+  ).join('') + '</div>';
+}
+
+function render(){
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  const stats = document.getElementById('stats');
+  if (!items.length){
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    stats.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const lowCount = items.filter(i => i.qty <= 2).length;
+  stats.innerHTML = `<span><b>${items.length}</b> items</span><span><b>${lowCount}</b> running low</span>`;
+
+  const sorted = [...items].sort((a,b) => a.qty - b.qty);
+  grid.innerHTML = sorted.map(item => {
+    const st = statusOf(item.qty);
+    return `
+      <div class="jar">
+        <button class="del" data-id="${item.id}" title="Remove">✕</button>
+        <div class="gauge"><div class="gauge-fill" style="height:${fmtHeight(item.qty)}; background:${st.color};"></div></div>
+        ${thumbHtml(item.type, item.image, 'item', item.id)}
+        <div class="jar-body">
+          <p class="jar-name">${escapeHtml(item.name)}</p>
+          <div class="qty-row">
+            <button class="minus" data-id="${item.id}">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="plus" data-id="${item.id}">+</button>
+            ${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}
+          </div>
+          <div class="tag-row">
+            <span class="added-by">added by ${escapeHtml(item.addedBy || 'someone')}</span>
+            <span class="badge ${st.cls}">${st.label}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.plus').forEach(b => b.onclick = () => adjustQty(b.dataset.id, 1));
+  grid.querySelectorAll('.minus').forEach(b => b.onclick = () => adjustQty(b.dataset.id, -1));
+  grid.querySelectorAll('.del').forEach(b => b.onclick = () => deleteItem(b.dataset.id));
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function objToList(obj){
+  return obj ? Object.entries(obj).map(([id, v]) => ({ id, ...v })) : [];
+}
+
+function listenItems(){
+  onValue(itemsRef, snap => {
+    items = objToList(snap.val());
+    render();
+    if (document.getElementById('view-wall').style.display !== 'none') renderWall();
+  });
+}
+
+function listenRequests(){
+  onValue(requestsRef, snap => {
+    requests = objToList(snap.val());
+    renderRequests();
+    if (document.getElementById('view-wall').style.display !== 'none') renderWall();
+  });
+}
+
+function renderRequests(){
+  const list = document.getElementById('req-list');
+  const empty = document.getElementById('req-empty');
+  const stats = document.getElementById('req-stats');
+  const tabCount = document.getElementById('tab-req');
+
+  const countLabel = requests.length ? ` <span class="count">${requests.length}</span>` : '';
+  tabCount.innerHTML = 'Request an Item' + countLabel;
+
+  if (!requests.length){
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    stats.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+  stats.innerHTML = `<span><b>${requests.length}</b> item${requests.length === 1 ? '' : 's'} on the list</span>`;
+
+  const sorted = [...requests].sort((a,b) => a.ts - b.ts);
+  list.innerHTML = sorted.map(r => `
+    <div class="req-card">
+      ${thumbHtml(r.type, r.image, 'request', r.id)}
+      <div class="req-body">
+        <p class="req-name">${escapeHtml(r.name)}</p>
+        <div class="req-meta">requested by ${escapeHtml(r.requestedBy || 'someone')}</div>
+        ${r.note ? `<div class="req-note">${escapeHtml(r.note)}</div>` : ''}
+      </div>
+      <div class="req-actions">
+        <button class="got-it" data-id="${r.id}">Got it ✓</button>
+        <button class="req-del" data-id="${r.id}" title="Remove">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.got-it').forEach(b => b.onclick = () => fulfillRequest(b.dataset.id));
+  list.querySelectorAll('.req-del').forEach(b => b.onclick = () => removeRequest(b.dataset.id));
+}
+
+async function addRequest(){
+  const nameInput = document.getElementById('r-name');
+  const noteInput = document.getElementById('r-note');
+  const typeInput = document.getElementById('r-type');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  const note = noteInput.value.trim();
+  const type = typeInput.value;
+  const image = rPendingPhoto;
+
+  nameInput.value = ''; noteInput.value = ''; typeInput.value = 'produce';
+  rPendingPhoto = '';
+  resetPhotoInput('r-photo', 'r-photo-label', 'r-photo-preview');
+  nameInput.focus();
+
+  try{
+    await push(requestsRef, {
+      name, note, type, image,
+      requestedBy: myName || 'someone',
+      ts: Date.now()
+    });
+  }catch(e){
+    console.error('Could not save request', e);
+  }
+}
+
+async function fulfillRequest(id){
+  const r = requests.find(x => x.id === id);
+  if (!r) return;
+
+  const existing = items.find(i => i.name.toLowerCase() === r.name.toLowerCase());
+  try{
+    if (existing){
+      await update(ref(db, `items/${existing.id}`), { qty: existing.qty + 1 });
+    } else {
+      await push(itemsRef, {
+        name: r.name, qty: 1, unit: '', type: r.type, image: r.image,
+        addedBy: myName || 'someone',
+        ts: Date.now()
+      });
+    }
+    await remove(ref(db, `requests/${id}`));
+  }catch(e){
+    console.error('Could not fulfill request', e);
+  }
+}
+
+async function removeRequest(id){
+  try{
+    await remove(ref(db, `requests/${id}`));
+  }catch(e){
+    console.error('Could not remove request', e);
+  }
+}
+
+function switchTab(view){
+  document.getElementById('view-in').style.display = view === 'in' ? 'block' : 'none';
+  document.getElementById('view-req').style.display = view === 'req' ? 'block' : 'none';
+  document.getElementById('view-wall').style.display = view === 'wall' ? 'block' : 'none';
+  document.getElementById('tab-in').classList.toggle('active', view === 'in');
+  document.getElementById('tab-req').classList.toggle('active', view === 'req');
+  document.getElementById('tab-wall').classList.toggle('active', view === 'wall');
+  if (view === 'wall') renderWall();
+}
+
+async function addItem(){
+  const nameInput = document.getElementById('f-name');
+  const qtyInput = document.getElementById('f-qty');
+  const unitInput = document.getElementById('f-unit');
+  const typeInput = document.getElementById('f-type');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  const qty = Math.max(0, parseInt(qtyInput.value || '1', 10) || 0);
+  const unit = unitInput.value.trim();
+  const type = typeInput.value;
+  const image = fPendingPhoto;
+
+  nameInput.value = ''; qtyInput.value = 1; unitInput.value = ''; typeInput.value = 'produce';
+  fPendingPhoto = '';
+  resetPhotoInput('f-photo', 'f-photo-label', 'f-photo-preview');
+  nameInput.focus();
+
+  try{
+    await push(itemsRef, {
+      name, qty, unit, type, image,
+      addedBy: myName || 'someone',
+      ts: Date.now()
+    });
+  }catch(e){
+    console.error('Could not save item', e);
+  }
+}
+
+async function adjustQty(id, delta){
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const newQty = Math.max(0, item.qty + delta);
+  try{
+    await update(ref(db, `items/${id}`), { qty: newQty });
+  }catch(e){
+    console.error('Could not update quantity', e);
+  }
+}
+
+async function deleteItem(id){
+  try{
+    await remove(ref(db, `items/${id}`));
+  }catch(e){
+    console.error('Could not delete item', e);
+  }
+}
+
+function renderNamebar(){
+  const bar = document.getElementById('namebar');
+  bar.innerHTML = myName
+    ? `Signed in as <b style="color:var(--ink)">&nbsp;${escapeHtml(myName)}</b>&nbsp; · <button id="change-name">change</button>`
+    : '';
+  const btn = document.getElementById('change-name');
+  if (btn) btn.onclick = () => showModal(true);
+}
+
+function showModal(prefill){
+  const bg = document.getElementById('modal-bg');
+  const input = document.getElementById('modal-name');
+  input.value = prefill && myName ? myName : '';
+  bg.style.display = 'flex';
+  input.focus();
+}
+function hideModal(){
+  document.getElementById('modal-bg').style.display = 'none';
+}
+
+async function saveMyName(){
+  const input = document.getElementById('modal-name');
+  const val = input.value.trim();
+  if (!val) { input.focus(); return; }
+  myName = val;
+  try{ localStorage.setItem(NAME_KEY, myName); }catch(e){}
+  renderNamebar();
+  hideModal();
+}
+
+async function init(){
+  try{
+    myName = localStorage.getItem(NAME_KEY) || '';
+  }catch(e){
+    myName = '';
+  }
+  renderNamebar();
+  if (!myName) showModal(false);
+
+  document.getElementById('f-add').onclick = addItem;
+  document.getElementById('f-name').addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+  document.getElementById('r-add').onclick = addRequest;
+  document.getElementById('r-name').addEventListener('keydown', e => { if (e.key === 'Enter') addRequest(); });
+  document.getElementById('tab-in').onclick = () => switchTab('in');
+  document.getElementById('tab-req').onclick = () => switchTab('req');
+  document.getElementById('tab-wall').onclick = () => switchTab('wall');
+  document.getElementById('modal-save').onclick = saveMyName;
+  document.getElementById('modal-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveMyName(); });
+  document.getElementById('lightbox-close').onclick = closeLightbox;
+  document.getElementById('lightbox-bg').addEventListener('click', e => { if (e.target.id === 'lightbox-bg') closeLightbox(); });
+  wirePhotoInput('f-photo', 'f-photo-label', 'f-photo-preview', v => fPendingPhoto = v);
+  wirePhotoInput('r-photo', 'r-photo-label', 'r-photo-preview', v => rPendingPhoto = v);
+
+  listenItems();
+  listenRequests();
+}
+
+init();
+</script>
+</body>
+</html>
